@@ -45,3 +45,17 @@ Most of the resource tokens spent goes to the foundation, to help fund their eff
 ## BASICS Foundation
 
 The goal is to establish an initial foundation which handles basic needs, such as food, clothing, and shelter.
+
+### Support for Producers
+
+BASICS Foundation will support farmers, clothing manufacturers, home goods suppliers, and other similar entities, through commodity streaming.
+
+The idea of commodity streaming is not new. But streaming is generally limited to precious metals and similar industries. Streaming is a lot like a loan. A precious metals streaming company will fund a mining operation.
+
+But instead of asking for interest and loan repayment, a contract is established which allows the streaming company to buy the metals at a certain fixed price, which is generally expected to be significantly below the current market price of the metal. In this way, streaming is a cross between a loan and a futures contract.
+
+BASICS Foundation will use the same approach, but instead of giving funding to mining operations, it'll give funding to companies that produce basic necessities. The foundation will then buy these products at a discount, and distribute some of these resources to those in need, as care packages.
+
+#### BASICS Boxes
+
+In addition to care packages, BASICS Foundation will also offer subscription boxes, which can be purchased in the foundation's narrow currency (BSIC). Some of the narrow currency will be burned to support its purchasing power, while the rest will go back to the foundation to help it cover expenses. 
