@@ -8,7 +8,7 @@ import "./governance.sol";
 /* The main function of the sovereignty contract is to be a hub for the other components. All other components will refer back to this contract for addresses to other components, allowing for modular changes. */
 
 // defines a sovereignty
-contract Sovereignty {
+contract Sovereignty is Governed {
   address owner;
 
   // name of the sovereignty
@@ -127,5 +127,11 @@ contract Sovereignty {
   function processFee(address _addr, uint _amt) public {
     require(msg.sender == address(governor) || msg.sender == address(arbitrator) || msg.sender == address(citizenship));
     resource.chargeBurn(_addr, _amt);
+  }
+
+  // governance functionality
+  function onResolve(uint _rid) public virtual {
+    require(msg.sender == address(governor));
+    // doesn't do anything right now
   }
 }

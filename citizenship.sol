@@ -31,7 +31,7 @@ contract CitizenshipManager {
   // citizenship grant structure
   struct Grant {
     // list of approvers for this citizen: maybe switch to array
-    mapping(uint => bool) approver;
+    uint[] approvers;
     // date at which citizenship was granted
     uint grant_date;
     // date at which citizenship was terminated, if at all
@@ -42,18 +42,20 @@ contract CitizenshipManager {
 
   // list of citizenship grant information
   mapping(uint => Grant) public grants;
+  uint lastGrantRequest;
 
   // record of the last time a citizen granted approval
-  mapping(uint => uint) public last_approved;
+  mapping(uint => uint) public lastApproved;
 
   // adds an applicant to the list
   function applyForCitizenship() public {
     address addr = msg.sender;
-    // check if applicant is already a citizen
-    require(citizens[addr] == 0);
+    // check if applicant is already a citizen or pending grant
+    require(citizens[addr] == 0 && applicants[addr] == 0);
     sovereignty.processFee(msg.sender, sovereignty.applicationFee());
     // add to list of applicants
-    applicants[addr] = 1;
+    applicants[addr] = lastGrantRequest;
+    lastGrantRequest += 1;
   }
 
   // checks if address is a citizen
@@ -70,27 +72,24 @@ contract CitizenshipManager {
     return applicants[_addr] == 1;
   }
 
-  // allows a group of citizens to approve an applicant
-  function approveApplicant(address _addr, uint[] memory approvers) public returns (uint _id) {
+  // approve a citizen grant request and return their id if enough approvals have collected
+  function approveApplicant(address _addr, uint  approver) public returns (uint _id) {
     // check if applicant is already a citizen
     require(citizens[_addr] == 0);
+    require(canApproveCitizenship(approver));
     // check if applicant
-    require(applicants[_addr] == 1);
-    // check if a majority of the approvers are valid
-    require(approvers.length > minimum_approvers());
-    Grant storage grant = grants[citizens[_addr]];
-    grant.grant_date = block.timestamp;
-    // check if the approvers are valid
-    for (uint i = 0; i < approvers.length; i++) {
-      uint approver = approvers[i];
-      require(can_approve_citizenship(approver));
-      // Add approver to list of those who approved this citizenship grant.
-      grant.approver[approver] = true;
-      last_approved[approver] = block.timestamp;
+    uint gid = applicants[_addr];
+    require(gid != 0);
+    Grant storage grant = grants[gid];
+    grant.approvers.push(approver);
+    // check if enough people have approved
+    if (grant.approvers.length > minimum_approvers()) {
+      grant.grant_date = block.timestamp;
+      uint id = _grantCitizenship(_addr);
+      emit CitizenshipGranted(id, _addr, grant.approvers);
+      return id;
     }
-    uint id = _grantCitizenship(_addr);
-    emit CitizenshipGranted(id, _addr, approvers);
-    return id;
+    return 0;
   }
 
   function sovereignGrant(address _addr) public returns (uint _grant_id) {
@@ -98,7 +97,9 @@ contract CitizenshipManager {
       require(citizens[_addr] == 0);
       uint id = population;
       population += 1;
-      Grant storage grant = grants[id];
+      uint gid = applicants[_addr];
+      require(gid != 0);
+      Grant storage grant = grants[gid];
       grant.grant_date = block.timestamp;
       grant.special = true;
       citizens[_addr] = id;
@@ -113,6 +114,7 @@ contract CitizenshipManager {
 
     // grant citizenship to applicant and add to reverse lookup
     citizens[_addr] = grant_id;
+    // this isn't correct
     citizensLookup[grant_id] = _addr;
 
     citizen_list.push(_addr);
@@ -126,8 +128,8 @@ contract CitizenshipManager {
     if (cap < 1) return 1;
   }
 
-  // check if a citizen is able to approve someone else for citizenship
-  function can_approve_citizenship(uint _id) public view returns (bool can_approve){
+  // check if a citizen is able to approve someone else for citizenship: should allow votes to change some parameters
+  function canApproveCitizenship(uint _id) public view returns (bool can_approve){
     if (citizensLookup[_id] == address(0)) return false;
 
     Grant storage grant = grants[_id];
@@ -140,7 +142,7 @@ contract CitizenshipManager {
     uint approval_lockout = (block.timestamp - sovereignty.founding()) / 5;
     if (approval_lockout > 1460 days) approval_lockout = 1460 days;
 
-    return (block.timestamp - grant.grant_date) >= min_age && (block.timestamp - last_approved[_id]) > approval_lockout;
+    return (block.timestamp - grant.grant_date) >= min_age && (block.timestamp - lastApproved[_id]) > approval_lockout;
   }
 
   // While the idea of revoking citizenship can be problematic, it can be useful, if designed right. For instance, citizens could age out, etc. But what happens if lifespans increase?
@@ -163,6 +165,7 @@ contract CitizenshipManager {
     address element = citizen_list[i];
     citizen_list[i] = citizen_list[citizen_list.length - 1];
     citizen_list.pop();
+    // Broken: Need to add a lookup table to identify grant ID from user ID
     Grant storage grant = grants[citizens[addr]];
     grant.termination_date = block.timestamp;
     emit CitizenshipRevoked(_id);
